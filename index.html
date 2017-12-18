@@ -1,0 +1,117 @@
+<html>
+  <head>
+    <script src="jquery-3.1.0.min.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="bootstrap.min.css">
+  </head>
+  <body>
+    <style>
+      .pagebreak { page-break-before: always; }
+    </style>
+    <div id=main class=container></div>
+    <div id=search class=container>
+      <div class="card">
+        <div class="card-header">
+          Search for a record
+        </div>
+        <div class="card-body">
+          <div class="input-group">
+          <input id=searchquery type="text" class="form-control" placeholder="Search for..." aria-label="Search for...">
+          <span class="input-group-btn">
+            <button class="btn btn-secondary" type="button" onclick="search()">Go!</button>
+          </span>
+        </div>
+        </div>
+      </div>
+      <div id=results></div>
+    </div>
+    <script>
+      function search () {
+        var searchTerm = $("#searchquery").val();
+        $.ajax({
+          url:"https://api.discogs.com/database/search?key=SIibrAQvBRMDliKvzZcs&secret=AeJNdLwVKKycqpJWFGsBkRcPYpyYAdFo&q="+searchTerm,
+          dataType:"json",
+          success: function (output) {
+            for (var i = 0; i < output.results.length; i++) {
+              if(output.results[i].type=="release" || output.results[i].type=="master") {
+                var card = "<div class='media'>"
+                if(output.results[i].thumb != undefined) {
+                  card += "<img class='mr-3' src="+output.results[i].thumb+">";
+                }
+                card += "<div class=media-body><h5 class='mt-0'>"+output.results[i].title+"</h5>"+output.results[i].country+" - "+output.results[i].type+"<br>"+output.results[i].format.join(", ")+"<br>"+output.results[i].genre.join(", ")+"<br>"+output.results[i].style.join(", ")+"<br><a href='#' onclick=select(\""+output.results[i].resource_url+"\") class='btn btn-primary'>Select</a></div></div>";
+                $("#results").append(card);
+              }
+            }
+          },
+          type: "GET",
+          contentType: "application/json",
+          async: false,
+          timeout: 5000
+        });
+      }
+
+      function select(resourceURL) {
+        $("#results").hide();
+        $("#search").hide();
+        $.ajax({
+          url: resourceURL+"?key=SIibrAQvBRMDliKvzZcs&secret=AeJNdLwVKKycqpJWFGsBkRcPYpyYAdFo",
+          dataType:"json",
+          success: function (output) {
+            var main = "";
+            var runtimeMins = 0;
+            var runtimeSecs = 0;
+            var tracklist = "</div><h5>Tracklist</h5><p>";
+            for (var i = 0; i < output.tracklist.length; i++) {
+              tracklist+=output.tracklist[i].title+" ("+output.tracklist[i].duration+")<br>";
+              var time = output.tracklist[i].duration.split(":");
+              runtimeMins+=parseInt(time[0]);
+              runtimeSecs+=parseInt(time[1]);
+            }
+            runtimeMins+=parseInt(runtimeSecs/60);
+            runtimeSecs=runtimeSecs%60;
+            if(runtimeSecs<10)
+              runtimeSecs = "0"+runtimeSecs;
+            tracklist += "</p>";
+
+            for (var i = 0; i < output.artists.length; i++) {
+              main += "<h1>"+output.artists[i].name+"</h1>";
+            }
+            main += "<h2>"+output.title+" ("+runtimeMins+":"+runtimeSecs+")"+"</h2>";
+            main += "<p>"+(new Date()).toDateString()+"</p><h5>Info</h5>";
+
+            if(output.released_formatted!=undefined && output.country != undefined)
+              main += "<p><b>Released</b> "+output.released_formatted+", "+output.country+"</p>";
+
+            main += "<p><b>Genres</b> "+output.genres.join(", ")+"</p>";
+            main += "<p><b>Styles</b> "+output.styles.join(", ")+"</p>";
+            if(output.labels != undefined) {
+            main += "<p><b>Lables</b> "
+              for (var i = 0; i < output.labels.length; i++) {
+                main += output.labels[i].name;
+                if(i < output.labels.length-1) {
+                  main += ", ";
+                }
+              }
+              main+="</p>";
+            }
+
+            // main += tracklist;
+
+            main += "<center><img src="+output.images[0].resource_url+"></center>";
+
+            if(output.notes!=undefined) {
+              main += "<p style=font-size:8>"+output.notes+"</p>";
+            }
+            main+="<div class=pagebreak>"
+            console.log(output);
+            $("#main").html(main);
+          },
+          type: "GET",
+          contentType: "application/json",
+          async: false,
+          timeout: 5000
+        });
+      }
+    </script>
+  </body>
+</html>
